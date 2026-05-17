@@ -16,6 +16,13 @@
         <module>planning</module>
     </modules>
 
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/marcushowarth/fin-model</url>
+        </repository>
+    </distributionManagement>
+
     <properties>
         <java.version>25</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
