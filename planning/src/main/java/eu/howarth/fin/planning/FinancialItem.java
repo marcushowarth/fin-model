@@ -5,7 +5,8 @@ import java.time.YearMonth;
 import java.util.Collections;
 import java.util.NavigableMap;
 
-public interface FinancialItem {
+public sealed interface FinancialItem
+        permits Asset, BankAccount, Expenditure, Income, Investment, Liability {
     String name();
     String description();
 
