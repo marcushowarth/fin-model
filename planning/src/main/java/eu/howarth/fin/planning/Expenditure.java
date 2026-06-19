@@ -16,8 +16,9 @@ public record Expenditure(
 
     @Override
     public NavigableMap<YearMonth, BigDecimal> flows(YearMonth from, YearMonth to) {
-        // absent end = one-off at start; present end = recurring start→end
-        YearMonth effectiveEnd = end.orElse(start);
+        // absent end = ongoing to the horizon; present end = recurring start→end.
+        // One-off spends are modelled as a FinancialEvent, not a no-end expenditure.
+        YearMonth effectiveEnd = end.orElse(to);
 
         YearMonth effectiveStart = start.isAfter(from) ? start : from;
         YearMonth clampedEnd     = effectiveEnd.isBefore(to) ? effectiveEnd : to;

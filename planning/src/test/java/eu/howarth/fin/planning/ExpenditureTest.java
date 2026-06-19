@@ -19,9 +19,9 @@ class ExpenditureTest {
     private static final Expenditure BILLS = new Expenditure(
             "bills", "household bills", JAN_2024, Optional.of(DEC_2030), bd("2000"));
 
-    // One-off — no end date
-    private static final Expenditure WEDDING = new Expenditure(
-            "wedding", "daughters wedding", MAY_2027, Optional.empty(), bd("15000"));
+    // Ongoing — no end date, runs to the projection horizon
+    private static final Expenditure RENT = new Expenditure(
+            "rent", "monthly rent", MAY_2027, Optional.empty(), bd("1200"));
 
     // --- Positions always empty ---
 
@@ -77,30 +77,25 @@ class ExpenditureTest {
                 .forEach(v -> assertAmount("-2000", v));
     }
 
-    // --- One-off ---
+    // --- Ongoing (no end date) ---
 
     @Test
-    void flows_oneOff_noEnd_singleFlowAtStart() {
-        var flows = WEDDING.flows(YearMonth.of(2025, 1), YearMonth.of(2030, 1));
-        assertEquals(1, flows.size());
-        assertTrue(flows.containsKey(MAY_2027));
+    void flows_noEnd_recursToHorizon() {
+        var flows = RENT.flows(MAY_2027, DEC_2030);
+        long expectedMonths = MAY_2027.until(DEC_2030, ChronoUnit.MONTHS) + 1;
+        assertEquals(expectedMonths, flows.size());
+        assertTrue(flows.containsKey(DEC_2030));
     }
 
     @Test
-    void flows_oneOff_correctAmount() {
-        var flows = WEDDING.flows(MAY_2027, MAY_2027);
-        assertAmount("-15000", flows.get(MAY_2027));
+    void flows_noEnd_constantAmount() {
+        RENT.flows(MAY_2027, YearMonth.of(2027, 10)).values()
+                .forEach(v -> assertAmount("-1200", v));
     }
 
     @Test
-    void flows_oneOff_beforeStart_returnsEmpty() {
-        var flows = WEDDING.flows(YearMonth.of(2025, 1), YearMonth.of(2026, 12));
-        assertTrue(flows.isEmpty());
-    }
-
-    @Test
-    void flows_oneOff_afterStart_returnsEmpty() {
-        var flows = WEDDING.flows(YearMonth.of(2027, 6), YearMonth.of(2030, 1));
+    void flows_noEnd_beforeStart_returnsEmpty() {
+        var flows = RENT.flows(JAN_2024, YearMonth.of(2027, 4));
         assertTrue(flows.isEmpty());
     }
 

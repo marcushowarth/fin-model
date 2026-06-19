@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.NavigableMap;
 
 public sealed interface FinancialItem
-        permits Asset, BankAccount, Expenditure, Income, Investment, Liability {
+        permits Asset, BankAccount, Expenditure, FinancialEvent, Income, Investment, Liability {
     String name();
     String description();
 

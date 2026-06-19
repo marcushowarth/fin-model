@@ -30,14 +30,16 @@ tackling planning.
 ### `planning`
 
 Financial items whose values evolve through configurable parameters, modelled as
-a sealed `FinancialItem` with six record subtypes:
+a sealed `FinancialItem` with seven record subtypes:
 
 - **Asset** — growth/depreciation, optional sale date
 - **Investment** — compounding pot with optional drawdown
 - **BankAccount** — seeds the starting cash pool
-- **Income** — growing monthly inflow, optional end
-- **Expenditure** — outflow (no end date = a one-off event)
+- **Income** — growing monthly inflow, optional end (no end = runs to the horizon)
+- **Expenditure** — monthly outflow, optional end (no end = runs to the horizon)
 - **Liability** — amortising balance with interest
+- **FinancialEvent** — a one-off, dated cash movement; signed amount (positive in,
+  negative out) for lump sums like a bonus, inheritance, wedding, or car
 
 `FinancialModel` aggregates the items and produces a `ModelProjection`: net worth,
 cumulative cash position, per-item positions, and solvency warnings. The model
