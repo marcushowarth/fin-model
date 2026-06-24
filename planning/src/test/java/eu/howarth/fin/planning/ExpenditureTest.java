@@ -15,13 +15,17 @@ class ExpenditureTest {
     private static final YearMonth DEC_2030 = YearMonth.of(2030, 12);
     private static final YearMonth MAY_2027 = YearMonth.of(2027, 5);
 
-    // Recurring — monthly bills with end date
+    // Recurring — monthly bills with end date, flat (no growth)
     private static final Expenditure BILLS = new Expenditure(
-            "bills", "household bills", JAN_2024, Optional.of(DEC_2030), bd("2000"));
+            "bills", "household bills", JAN_2024, Optional.of(DEC_2030), bd("2000"), BigDecimal.ZERO);
 
-    // Ongoing — no end date, runs to the projection horizon
+    // Ongoing — no end date, runs to the projection horizon, flat
     private static final Expenditure RENT = new Expenditure(
-            "rent", "monthly rent", MAY_2027, Optional.empty(), bd("1200"));
+            "rent", "monthly rent", MAY_2027, Optional.empty(), bd("1200"), BigDecimal.ZERO);
+
+    // Growing — 12% annual, compounds monthly like Income
+    private static final Expenditure GROWING = new Expenditure(
+            "childcare", "rising costs", JAN_2024, Optional.of(DEC_2030), bd("1000"), bd("0.12"));
 
     // --- Positions always empty ---
 
@@ -75,6 +79,31 @@ class ExpenditureTest {
     void flows_constantAmount_allMonthsSameValue() {
         BILLS.flows(JAN_2024, YearMonth.of(2024, 6)).values()
                 .forEach(v -> assertAmount("-2000", v));
+    }
+
+    // --- Growth ---
+
+    @Test
+    void flows_withGrowth_firstMonthIsBaseAmount() {
+        var flows = GROWING.flows(JAN_2024, JAN_2024);
+        assertAmount("-1000", flows.get(JAN_2024));
+    }
+
+    @Test
+    void flows_withGrowth_compoundsToAnnualRateAfter12Months() {
+        // 12 monthly steps of (1.12)^(1/12) compound back to the annual 12%.
+        var flows = GROWING.flows(JAN_2024, YearMonth.of(2025, 1));
+        double twelveMonthsOn = flows.get(YearMonth.of(2025, 1)).doubleValue();
+        assertEquals(-1120.0, twelveMonthsOn, 0.01);
+    }
+
+    @Test
+    void flows_withGrowth_increasesEachMonth() {
+        var values = GROWING.flows(JAN_2024, YearMonth.of(2024, 4)).values().stream()
+                .map(BigDecimal::doubleValue).toList();
+        for (int i = 1; i < values.size(); i++) {
+            assertTrue(values.get(i) < values.get(i - 1), "magnitude should grow (more negative)");
+        }
     }
 
     // --- Ongoing (no end date) ---

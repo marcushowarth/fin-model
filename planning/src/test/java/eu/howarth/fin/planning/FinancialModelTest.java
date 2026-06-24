@@ -73,7 +73,7 @@ class FinancialModelTest {
     void project_expenditure_reducesCashEachMonth() {
         var proj = new FinancialModel(List.of(
                 new BankAccount("bank", "", bd("5000")),
-                new Expenditure("bills", "", JAN, Optional.of(MAR), bd("1000"))
+                new Expenditure("bills", "", JAN, Optional.of(MAR), bd("1000"), BigDecimal.ZERO)
         )).project(JAN, MAR);
         assertAmount("4000", proj.cashPosition().get(JAN));
         assertAmount("3000", proj.cashPosition().get(FEB));
@@ -135,7 +135,7 @@ class FinancialModelTest {
     void project_solvencyWarning_whenCashGoesNegative() {
         var proj = new FinancialModel(List.of(
                 new BankAccount("bank", "", bd("500")),
-                new Expenditure("car", "", JAN, Optional.empty(), bd("1000"))
+                new Expenditure("car", "", JAN, Optional.empty(), bd("1000"), BigDecimal.ZERO)
         )).project(JAN, JAN);
         assertEquals(1, proj.warnings().size());
         assertEquals(JAN, proj.warnings().get(0).month());
@@ -146,7 +146,7 @@ class FinancialModelTest {
     void project_noWarning_whenCashPositiveThroughout() {
         var proj = new FinancialModel(List.of(
                 new BankAccount("bank", "", bd("5000")),
-                new Expenditure("bills", "", JAN, Optional.of(MAR), bd("1000"))
+                new Expenditure("bills", "", JAN, Optional.of(MAR), bd("1000"), BigDecimal.ZERO)
         )).project(JAN, MAR);
         assertTrue(proj.warnings().isEmpty());
     }
@@ -154,7 +154,7 @@ class FinancialModelTest {
     @Test
     void project_warningGeneratedForEveryNegativeMonth() {
         var proj = new FinancialModel(List.of(
-                new Expenditure("bills", "", JAN, Optional.of(MAR), bd("1000"))
+                new Expenditure("bills", "", JAN, Optional.of(MAR), bd("1000"), BigDecimal.ZERO)
         )).project(JAN, MAR);
         assertEquals(3, proj.warnings().size());
     }

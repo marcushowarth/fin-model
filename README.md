@@ -36,7 +36,7 @@ a sealed `FinancialItem` with seven record subtypes:
 - **Investment** — compounding pot with optional drawdown
 - **BankAccount** — seeds the starting cash pool
 - **Income** — growing monthly inflow, optional end (no end = runs to the horizon)
-- **Expenditure** — monthly outflow, optional end (no end = runs to the horizon)
+- **Expenditure** — growing monthly outflow, optional end (no end = runs to the horizon)
 - **Liability** — amortising balance with interest
 - **FinancialEvent** — a one-off, dated cash movement; signed amount (positive in,
   negative out) for lump sums like a bonus, inheritance, wedding, or car
