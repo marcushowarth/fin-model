@@ -102,6 +102,28 @@ class RealTermsAdjusterTest {
     }
 
     @Test
+    void cashPosition_negativeValue_deflatesBySameRatioAsPositive() {
+        // A cash shortfall (overdraft) deflates by the exact same RPI ratio as a surplus —
+        // inflation erodes the real burden of a fixed nominal liability just as it erodes
+        // the real value of a fixed nominal asset. Mirrors cashPosition_deflatedByScenario
+        // above with the sign flipped: -520*(100/104) = -500 exactly, shrinking toward zero
+        // rather than growing more negative.
+        NavigableMap<YearMonth, BigDecimal> netWorth = new TreeMap<>();
+        netWorth.put(BASE,    bd("-500"));
+        netWorth.put(MONTH_3, bd("-520"));
+
+        NavigableMap<YearMonth, BigDecimal> cashPosition = new TreeMap<>();
+        cashPosition.put(BASE,    bd("-500"));
+        cashPosition.put(MONTH_3, bd("-520"));
+
+        ModelProjection negative = new ModelProjection(netWorth, cashPosition, Map.of(), List.of());
+        RealTermsProjection result = RealTermsAdjuster.adjust(negative, SCENARIOS, BASE);
+
+        assertAmount("-500", result.cashPosition().get("low").get(BASE));
+        assertAmount("-500", result.cashPosition().get("low").get(MONTH_3));
+    }
+
+    @Test
     void itemPositions_deflatedByScenario() {
         RealTermsProjection result = RealTermsAdjuster.adjust(NOMINAL, SCENARIOS, BASE);
         // House at base is unchanged

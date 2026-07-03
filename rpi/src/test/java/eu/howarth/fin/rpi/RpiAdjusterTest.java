@@ -42,6 +42,14 @@ class RpiAdjusterTest {
     }
 
     @Test
+    void negativeValue_backwardInTime_shrinksMagnitudeBySameRatio() {
+        // -£200 in 2010 (RPI=200) deflated to 2000 terms (RPI=100) = -£100.
+        // Same ratio as the positive case above — inflation erodes the real burden of a
+        // fixed nominal liability just as it erodes the real value of a fixed nominal asset.
+        assertAmount("-100", RpiAdjuster.adjust(bd("-200"), 2010, 2000, TEST_DATA));
+    }
+
+    @Test
     void nonBaseYear_usesCorrectRatio() {
         // £100 in 2010 (RPI=200) → 2020 (RPI=400) = £200
         assertAmount("200", RpiAdjuster.adjust(bd("100"), 2010, 2020, TEST_DATA));
