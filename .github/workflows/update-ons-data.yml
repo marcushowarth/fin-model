@@ -1,0 +1,68 @@
+name: Update ONS RPI data
+
+# Weekly rather than tied to ONS's exact (variable) release date — the gate
+# below makes a no-op run cheap, so checking weekly just catches the new
+# month sooner than guessing a fixed day and risking a month's lag.
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # every Monday, 06:00 UTC
+  workflow_dispatch: {}
+
+env:
+  CSV_PATH: rpi/src/main/resources/eu/howarth/fin/rpi/ons-chaw.csv
+  ONS_URL: https://www.ons.gov.uk/generator?format=csv&uri=/economy/inflationandpriceindices/timeseries/chaw/mm23
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Fetch latest ONS CHAW data
+        run: |
+          curl -sL "$ONS_URL" -o /tmp/ons-chaw-latest.csv
+          if ! grep -q '"CDID","CHAW"' /tmp/ons-chaw-latest.csv; then
+            echo "::error::Fetched file doesn't look like ONS CHAW CSV — aborting"
+            exit 1
+          fi
+
+      - name: Gate — only proceed if a new row was added
+        id: gate
+        run: |
+          OLD_LINES=$(wc -l < "$CSV_PATH")
+          NEW_LINES=$(wc -l < /tmp/ons-chaw-latest.csv)
+          echo "old=$OLD_LINES new=$NEW_LINES"
+          if [ "$NEW_LINES" -le "$OLD_LINES" ]; then
+            echo "No new row since last refresh — nothing to do."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Replace bundled CSV
+        if: steps.gate.outputs.proceed == 'true'
+        run: cp /tmp/ons-chaw-latest.csv "$CSV_PATH"
+
+      - uses: actions/setup-java@v5
+        if: steps.gate.outputs.proceed == 'true'
+        with:
+          java-version: '25'
+          distribution: temurin
+          cache: maven
+
+      - name: Test rpi module with refreshed data
+        if: steps.gate.outputs.proceed == 'true'
+        run: mvn test -pl rpi
+
+      - name: Commit and push
+        if: steps.gate.outputs.proceed == 'true'
+        run: |
+          LATEST_MONTH=$(grep -E '^"[0-9]{4} [A-Z]{3}"' "$CSV_PATH" | tail -1 | cut -d'"' -f2)
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$CSV_PATH"
+          git commit -m "data: refresh ONS RPI CHAW to ${LATEST_MONTH}"
+          git push
