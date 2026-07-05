@@ -27,6 +27,15 @@ tackling planning.
 - `RpiScenario` / `RpiScenarioSet` — adjust a value across several inflation
   scenarios at once (e.g. low / base / high)
 
+**Data freshness.** The bundled ONS CHAW series (`ons-chaw.csv`) is kept current
+by [`update-ons-data.yml`](.github/workflows/update-ons-data.yml) — a weekly
+check (Mondays) that fetches the latest ONS export, gates on whether a genuinely
+new row was added (so an ONS revision to an existing figure doesn't trigger a
+no-op commit), runs the module's tests against the refreshed data as a
+correctness check, and commits + pushes only if both pass. A failed/no-op run
+means the data was already current, or ONS's response looked wrong — either
+way, the last known-good data stays in place.
+
 ### `planning`
 
 Financial items whose values evolve through configurable parameters, modelled as
@@ -77,6 +86,17 @@ whichever module you need:
     <version>0.0.1-SNAPSHOT</version>
 </dependency>
 ```
+
+**Versioning.** The declared version stays `0.0.1-SNAPSHOT` — it isn't bumped
+for routine changes like an ONS data refresh, only for actual API changes.
+Each publish (code or data) still gets a unique, real artifact underneath:
+Maven's snapshot mechanism auto-generates a timestamp + build number
+(e.g. `fin-model-rpi-0.0.1-20260705.172544-5.jar`) on every deploy, which is
+what your build actually resolves. This means a plain `mvn verify` may keep
+using a locally-cached copy — pass `-U` (`mvn verify -U`) to force Maven to
+check for a newer snapshot build, which matters if you want to be sure you've
+picked up the latest ONS refresh rather than whatever was cached at your last
+build.
 
 GitHub Packages requires authentication even for reads — configure a token with
 `read:packages` in your `~/.m2/settings.xml`. See the
