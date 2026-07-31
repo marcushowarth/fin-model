@@ -17,11 +17,18 @@ public class FinancialModel {
                 .map(FinancialItem::startingLiquidity)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Aggregate flows per month across all items
+        // Aggregate flows per month across all items, and track per-item
         NavigableMap<YearMonth, BigDecimal> flowsByMonth = new TreeMap<>();
+        Map<String, NavigableMap<YearMonth, BigDecimal>> itemFlows = new LinkedHashMap<>();
         for (FinancialItem item : items) {
-            item.flows(from, to).forEach((month, flow) ->
-                    flowsByMonth.merge(month, flow, BigDecimal::add));
+            var flows = item.flows(from, to);
+            flows.forEach((month, flow) -> flowsByMonth.merge(month, flow, BigDecimal::add));
+            if (!flows.isEmpty()) {
+                itemFlows.merge(item.name(), new TreeMap<>(flows), (a, b) -> {
+                    b.forEach((m, v) -> a.merge(m, v, BigDecimal::add));
+                    return a;
+                });
+            }
         }
 
         // Aggregate positions per month and track per-item
@@ -58,6 +65,6 @@ public class FinancialModel {
             current = current.plusMonths(1);
         }
 
-        return new ModelProjection(netWorth, cashPosition, Map.copyOf(itemPositions), List.copyOf(warnings));
+        return new ModelProjection(netWorth, cashPosition, Map.copyOf(itemPositions), Map.copyOf(itemFlows), List.copyOf(warnings));
     }
 }

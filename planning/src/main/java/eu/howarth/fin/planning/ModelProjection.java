@@ -10,5 +10,6 @@ public record ModelProjection(
         NavigableMap<YearMonth, BigDecimal> netWorth,
         NavigableMap<YearMonth, BigDecimal> cashPosition,
         Map<String, NavigableMap<YearMonth, BigDecimal>> itemPositions,
+        Map<String, NavigableMap<YearMonth, BigDecimal>> itemFlows,
         List<SolvencyWarning> warnings
 ) {}

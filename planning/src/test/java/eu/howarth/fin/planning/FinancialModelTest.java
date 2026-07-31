@@ -169,6 +169,42 @@ class FinancialModelTest {
         assertAmount("200000", proj.itemPositions().get("flat").get(JAN));
     }
 
+    // --- Item flows ---
+
+    @Test
+    void project_itemFlows_trackedByName() {
+        var salary = new Income("salary", "job", JAN, Optional.empty(), bd("1000"), BigDecimal.ZERO);
+        var proj = new FinancialModel(List.of(salary)).project(JAN, MAR);
+        assertTrue(proj.itemFlows().containsKey("salary"));
+        assertAmount("1000", proj.itemFlows().get("salary").get(JAN));
+        assertAmount("1000", proj.itemFlows().get("salary").get(FEB));
+        assertAmount("1000", proj.itemFlows().get("salary").get(MAR));
+    }
+
+    @Test
+    void project_itemFlows_expenditureIsNegative() {
+        var bills = new Expenditure("bills", "", JAN, Optional.of(MAR), bd("200"), BigDecimal.ZERO);
+        var proj = new FinancialModel(List.of(bills)).project(JAN, MAR);
+        assertAmount("-200", proj.itemFlows().get("bills").get(JAN));
+    }
+
+    @Test
+    void project_itemFlows_appliesGrowthRateCompounding() {
+        // 12% annual growth compounded monthly — month 2 should be higher than month 1
+        var salary = new Income("salary", "", JAN, Optional.empty(), bd("1000"), bd("0.12"));
+        var proj = new FinancialModel(List.of(salary)).project(JAN, FEB);
+        var jan = proj.itemFlows().get("salary").get(JAN);
+        var feb = proj.itemFlows().get("salary").get(FEB);
+        assertTrue(feb.compareTo(jan) > 0, () -> "Expected " + feb + " > " + jan);
+    }
+
+    @Test
+    void project_itemFlows_itemsWithNoFlows_absentFromMap() {
+        var flat = new Asset("flat", "", JAN, bd("200000"), BigDecimal.ZERO, Optional.empty());
+        var proj = new FinancialModel(List.of(flat)).project(JAN, JAN);
+        assertFalse(proj.itemFlows().containsKey("flat"));
+    }
+
     private static void assertAmount(String expected, BigDecimal actual) {
         assertEquals(0, new BigDecimal(expected).compareTo(actual),
                 () -> "Expected " + expected + " but was " + actual);

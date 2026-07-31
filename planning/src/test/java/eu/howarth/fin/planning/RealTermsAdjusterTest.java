@@ -59,7 +59,7 @@ class RealTermsAdjusterTest {
         itemSeries.put(BASE,    bd("600"));
         itemSeries.put(MONTH_3, bd("624"));
 
-        NOMINAL = new ModelProjection(netWorth, cashPosition, Map.of("House", itemSeries), List.of());
+        NOMINAL = new ModelProjection(netWorth, cashPosition, Map.of("House", itemSeries), Map.of(), List.of());
     }
 
     @Test
@@ -116,7 +116,7 @@ class RealTermsAdjusterTest {
         cashPosition.put(BASE,    bd("-500"));
         cashPosition.put(MONTH_3, bd("-520"));
 
-        ModelProjection negative = new ModelProjection(netWorth, cashPosition, Map.of(), List.of());
+        ModelProjection negative = new ModelProjection(netWorth, cashPosition, Map.of(), Map.of(), List.of());
         RealTermsProjection result = RealTermsAdjuster.adjust(negative, SCENARIOS, BASE);
 
         assertAmount("-500", result.cashPosition().get("low").get(BASE));
@@ -154,7 +154,7 @@ class RealTermsAdjusterTest {
     void emptyItemPositions_producesEmptyScenarioItemMap() {
         NavigableMap<YearMonth, BigDecimal> netWorth = new TreeMap<>();
         netWorth.put(BASE, bd("1000"));
-        ModelProjection noItems = new ModelProjection(netWorth, new TreeMap<>(), Map.of(), List.of());
+        ModelProjection noItems = new ModelProjection(netWorth, new TreeMap<>(), Map.of(), Map.of(), List.of());
         RealTermsProjection result = RealTermsAdjuster.adjust(noItems, SCENARIOS, BASE);
         assertTrue(result.itemPositions().isEmpty());
     }
