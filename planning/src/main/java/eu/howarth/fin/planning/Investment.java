@@ -13,11 +13,13 @@ public record Investment(
         YearMonth start,
         BigDecimal startValue,
         BigDecimal annualGrowthRate,
+        Optional<YearMonth> contributionStart,
         Optional<BigDecimal> monthlyContribution,
         BigDecimal contributionGrowthRate,
         Optional<YearMonth> contributionEnd,
         Optional<YearMonth> drawdownStart,
-        Optional<BigDecimal> monthlyDrawdown
+        Optional<BigDecimal> monthlyDrawdown,
+        BigDecimal drawdownGrowthRate
 ) implements FinancialItem {
 
     @Override
@@ -42,8 +44,11 @@ public record Investment(
 
         BigDecimal potFactor = BigDecimal.valueOf(Math.pow(1 + annualGrowthRate.doubleValue(), 1.0 / 12));
         BigDecimal contributionFactor = BigDecimal.valueOf(Math.pow(1 + contributionGrowthRate.doubleValue(), 1.0 / 12));
+        BigDecimal drawdownFactor = BigDecimal.valueOf(Math.pow(1 + drawdownGrowthRate.doubleValue(), 1.0 / 12));
         BigDecimal pot = startValue;
         BigDecimal contribution = monthlyContribution.orElse(BigDecimal.ZERO);
+        BigDecimal drawdown = monthlyDrawdown.orElse(BigDecimal.ZERO);
+        YearMonth effectiveContributionStart = contributionStart.orElse(start);
         YearMonth current = start;
 
         while (!current.isAfter(to) && pot.compareTo(BigDecimal.ZERO) > 0) {
@@ -56,11 +61,12 @@ public record Investment(
             YearMonth month = current;
             boolean inDrawdown = drawdownStart.isPresent() && !month.isBefore(drawdownStart.get());
             boolean inContribution = !inDrawdown && monthlyContribution.isPresent()
+                    && !month.isBefore(effectiveContributionStart)
                     && contributionEnd.map(e -> !month.isAfter(e)).orElse(true);
 
             BigDecimal flow = BigDecimal.ZERO;
             if (inDrawdown) {
-                BigDecimal draw = monthlyDrawdown.get().min(pot);
+                BigDecimal draw = drawdown.min(pot);
                 pot = pot.subtract(draw).max(BigDecimal.ZERO);
                 flow = draw;
             } else if (inContribution) {
@@ -74,6 +80,7 @@ public record Investment(
 
             current = current.plusMonths(1);
             if (inContribution) contribution = contribution.multiply(contributionFactor, MathContext.DECIMAL64);
+            if (inDrawdown) drawdown = drawdown.multiply(drawdownFactor, MathContext.DECIMAL64);
         }
     }
 
