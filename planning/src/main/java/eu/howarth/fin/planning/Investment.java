@@ -13,6 +13,9 @@ public record Investment(
         YearMonth start,
         BigDecimal startValue,
         BigDecimal annualGrowthRate,
+        Optional<BigDecimal> monthlyContribution,
+        BigDecimal contributionGrowthRate,
+        Optional<YearMonth> contributionEnd,
         Optional<YearMonth> drawdownStart,
         Optional<BigDecimal> monthlyDrawdown
 ) implements FinancialItem {
@@ -20,16 +23,16 @@ public record Investment(
     @Override
     public NavigableMap<YearMonth, BigDecimal> positions(YearMonth from, YearMonth to) {
         NavigableMap<YearMonth, BigDecimal> result = new TreeMap<>();
-        iterate(from, to, (month, pot, draw) -> result.put(month, pot));
+        iterate(from, to, (month, pot, flow) -> result.put(month, pot));
         return result;
     }
 
     @Override
     public NavigableMap<YearMonth, BigDecimal> flows(YearMonth from, YearMonth to) {
-        if (drawdownStart.isEmpty()) return new TreeMap<>();
+        if (drawdownStart.isEmpty() && monthlyContribution.isEmpty()) return new TreeMap<>();
         NavigableMap<YearMonth, BigDecimal> result = new TreeMap<>();
-        iterate(from, to, (month, pot, draw) -> {
-            if (draw.compareTo(BigDecimal.ZERO) > 0) result.put(month, draw);
+        iterate(from, to, (month, pot, flow) -> {
+            if (flow.compareTo(BigDecimal.ZERO) != 0) result.put(month, flow);
         });
         return result;
     }
@@ -37,32 +40,45 @@ public record Investment(
     private void iterate(YearMonth from, YearMonth to, PotConsumer consumer) {
         if (start.isAfter(to)) return;
 
-        BigDecimal factor = BigDecimal.valueOf(Math.pow(1 + annualGrowthRate.doubleValue(), 1.0 / 12));
+        BigDecimal potFactor = BigDecimal.valueOf(Math.pow(1 + annualGrowthRate.doubleValue(), 1.0 / 12));
+        BigDecimal contributionFactor = BigDecimal.valueOf(Math.pow(1 + contributionGrowthRate.doubleValue(), 1.0 / 12));
         BigDecimal pot = startValue;
+        BigDecimal contribution = monthlyContribution.orElse(BigDecimal.ZERO);
         YearMonth current = start;
 
         while (!current.isAfter(to) && pot.compareTo(BigDecimal.ZERO) > 0) {
-            // Position recorded before this month's growth and drawdown — opening balance
+            // Position recorded before this month's growth/contribution/drawdown — opening balance
             BigDecimal positionThisMonth = pot;
 
-            pot = pot.multiply(factor, MathContext.DECIMAL64);
+            pot = pot.multiply(potFactor, MathContext.DECIMAL64);
 
-            BigDecimal draw = BigDecimal.ZERO;
-            if (drawdownStart.isPresent() && !current.isBefore(drawdownStart.get())) {
-                draw = monthlyDrawdown.get().min(pot);
+            // Drawdown always takes priority if contributionEnd and drawdownStart ever overlap.
+            YearMonth month = current;
+            boolean inDrawdown = drawdownStart.isPresent() && !month.isBefore(drawdownStart.get());
+            boolean inContribution = !inDrawdown && monthlyContribution.isPresent()
+                    && contributionEnd.map(e -> !month.isAfter(e)).orElse(true);
+
+            BigDecimal flow = BigDecimal.ZERO;
+            if (inDrawdown) {
+                BigDecimal draw = monthlyDrawdown.get().min(pot);
                 pot = pot.subtract(draw).max(BigDecimal.ZERO);
+                flow = draw;
+            } else if (inContribution) {
+                pot = pot.add(contribution);
+                flow = contribution.negate();
             }
 
             if (!current.isBefore(from)) {
-                consumer.accept(current, positionThisMonth, draw);
+                consumer.accept(current, positionThisMonth, flow);
             }
 
             current = current.plusMonths(1);
+            if (inContribution) contribution = contribution.multiply(contributionFactor, MathContext.DECIMAL64);
         }
     }
 
     @FunctionalInterface
     private interface PotConsumer {
-        void accept(YearMonth month, BigDecimal pot, BigDecimal draw);
+        void accept(YearMonth month, BigDecimal pot, BigDecimal flow);
     }
 }

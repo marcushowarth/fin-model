@@ -13,20 +13,36 @@ class InvestmentTest {
     private static final YearMonth JAN_2024 = YearMonth.of(2024, 1);
     private static final YearMonth JAN_2034 = YearMonth.of(2034, 1);
 
-    // Pure growth — no drawdown
+    // Pure growth — no contribution, no drawdown
     private static final Investment SIPP_GROWING = new Investment(
             "SIPP", "self-invested pension", JAN_2024, new BigDecimal("200000"),
-            new BigDecimal("0.05"), Optional.empty(), Optional.empty());
+            new BigDecimal("0.05"), Optional.empty(), BigDecimal.ZERO, Optional.empty(),
+            Optional.empty(), Optional.empty());
 
-    // Zero growth, no drawdown — flat position
+    // Zero growth, no contribution, no drawdown — flat position
     private static final Investment STATIC = new Investment(
             "ISA", "stocks and shares ISA", JAN_2024, new BigDecimal("50000"),
-            BigDecimal.ZERO, Optional.empty(), Optional.empty());
+            BigDecimal.ZERO, Optional.empty(), BigDecimal.ZERO, Optional.empty(),
+            Optional.empty(), Optional.empty());
 
-    // Drawdown from Jan 2034, £800/month, 5% growth
+    // Drawdown from Jan 2034, £800/month, 5% growth, no contribution
     private static final Investment SIPP_DRAWDOWN = new Investment(
             "SIPP", "self-invested pension", JAN_2024, new BigDecimal("200000"),
-            new BigDecimal("0.05"), Optional.of(JAN_2034), Optional.of(new BigDecimal("800")));
+            new BigDecimal("0.05"), Optional.empty(), BigDecimal.ZERO, Optional.empty(),
+            Optional.of(JAN_2034), Optional.of(new BigDecimal("800")));
+
+    // £500/month contribution, 3% contribution growth, no end, no drawdown — accumulation phase only
+    private static final Investment SIPP_CONTRIBUTING = new Investment(
+            "SIPP", "self-invested pension", JAN_2024, new BigDecimal("200000"),
+            new BigDecimal("0.05"), Optional.of(new BigDecimal("500")), new BigDecimal("0.03"),
+            Optional.empty(), Optional.empty(), Optional.empty());
+
+    // Contributions Jan 2024 - Dec 2028 (contributionEnd), gap, drawdown from Jan 2034
+    private static final YearMonth DEC_2028 = YearMonth.of(2028, 12);
+    private static final Investment SIPP_WITH_GAP = new Investment(
+            "SIPP", "self-invested pension", JAN_2024, new BigDecimal("200000"),
+            new BigDecimal("0.05"), Optional.of(new BigDecimal("500")), BigDecimal.ZERO,
+            Optional.of(DEC_2028), Optional.of(JAN_2034), Optional.of(new BigDecimal("800")));
 
     // --- Positions: no drawdown ---
 
@@ -94,16 +110,17 @@ class InvestmentTest {
     void positions_potExhausted_noFurtherPositions() {
         // Small pot, large drawdown, zero growth → pot exhausted quickly
         var exhausting = new Investment("small", "small pot", JAN_2024, new BigDecimal("500"),
-                BigDecimal.ZERO, Optional.of(JAN_2024), Optional.of(new BigDecimal("200")));
+                BigDecimal.ZERO, Optional.empty(), BigDecimal.ZERO, Optional.empty(),
+                Optional.of(JAN_2024), Optional.of(new BigDecimal("200")));
         var pos = exhausting.positions(JAN_2024, YearMonth.of(2030, 1));
         // 500 / 200 = 2.5 → 3 months (500, 300, 100) then exhausted
         assertEquals(3, pos.size());
     }
 
-    // --- Flows: no drawdown ---
+    // --- Flows: no drawdown, no contribution ---
 
     @Test
-    void flows_noDrawdown_alwaysEmpty() {
+    void flows_noDrawdownNoContribution_alwaysEmpty() {
         assertTrue(SIPP_GROWING.flows(JAN_2024, YearMonth.of(2030, 1)).isEmpty());
     }
 
@@ -131,7 +148,8 @@ class InvestmentTest {
     @Test
     void flows_potExhausted_stopsWhenPotEmpty() {
         var exhausting = new Investment("small", "small pot", JAN_2024, new BigDecimal("500"),
-                BigDecimal.ZERO, Optional.of(JAN_2024), Optional.of(new BigDecimal("200")));
+                BigDecimal.ZERO, Optional.empty(), BigDecimal.ZERO, Optional.empty(),
+                Optional.of(JAN_2024), Optional.of(new BigDecimal("200")));
         var flows = exhausting.flows(JAN_2024, YearMonth.of(2030, 1));
         // 500 → pay 200, 300 → pay 200, 100 → pay 100 (clips) = 3 payments
         assertEquals(3, flows.size());
@@ -140,9 +158,74 @@ class InvestmentTest {
     @Test
     void flows_finalDrawdownClipsToRemainingPot() {
         var exhausting = new Investment("small", "small pot", JAN_2024, new BigDecimal("500"),
-                BigDecimal.ZERO, Optional.of(JAN_2024), Optional.of(new BigDecimal("200")));
+                BigDecimal.ZERO, Optional.empty(), BigDecimal.ZERO, Optional.empty(),
+                Optional.of(JAN_2024), Optional.of(new BigDecimal("200")));
         var flows = exhausting.flows(JAN_2024, YearMonth.of(2030, 1));
         // Month 3 (Mar 2024): remaining pot = 100, draws only 100 not 200
         assertEquals(0, new BigDecimal("100").compareTo(flows.get(YearMonth.of(2024, 3))));
+    }
+
+    // --- Flows: with contribution ---
+
+    @Test
+    void flows_contribution_isNegative() {
+        SIPP_CONTRIBUTING.flows(JAN_2024, YearMonth.of(2025, 1)).values()
+                .forEach(v -> assertTrue(v.compareTo(BigDecimal.ZERO) < 0, "Contribution flows must be negative"));
+    }
+
+    @Test
+    void flows_contribution_firstMonthMatchesMonthlyContribution() {
+        var flows = SIPP_CONTRIBUTING.flows(JAN_2024, JAN_2024);
+        assertEquals(0, new BigDecimal("-500").compareTo(flows.get(JAN_2024)));
+    }
+
+    @Test
+    void flows_contribution_compoundsAtOwnGrowthRate() {
+        var flows = SIPP_CONTRIBUTING.flows(JAN_2024, YearMonth.of(2025, 1));
+        var jan = flows.get(JAN_2024).abs();
+        var feb2025 = flows.get(YearMonth.of(2025, 1)).abs();
+        assertTrue(feb2025.compareTo(jan) > 0, () -> "Expected " + feb2025 + " > " + jan + " (3% annual growth)");
+    }
+
+    @Test
+    void positions_contribution_growsPotFasterThanGrowthAlone() {
+        var withContribution = SIPP_CONTRIBUTING.positions(JAN_2024, YearMonth.of(2025, 1));
+        var withoutContribution = SIPP_GROWING.positions(JAN_2024, YearMonth.of(2025, 1));
+        assertTrue(withContribution.get(YearMonth.of(2025, 1)).compareTo(withoutContribution.get(YearMonth.of(2025, 1))) > 0,
+                "Contributions should grow the pot beyond investment growth alone");
+    }
+
+    // --- Flows: contribution + gap + drawdown ---
+
+    @Test
+    void flows_gapPhase_noFlow() {
+        // Between contributionEnd (Dec 2028) and drawdownStart (Jan 2034) — pure growth, no flow
+        var flows = SIPP_WITH_GAP.flows(YearMonth.of(2029, 1), YearMonth.of(2033, 12));
+        assertTrue(flows.isEmpty(), "Gap phase should produce no flow");
+    }
+
+    @Test
+    void flows_contributionPhase_stopsAtContributionEnd() {
+        var flows = SIPP_WITH_GAP.flows(JAN_2024, DEC_2028);
+        assertTrue(flows.containsKey(DEC_2028), "Contribution should still apply on contributionEnd itself (inclusive)");
+        assertTrue(flows.get(DEC_2028).compareTo(BigDecimal.ZERO) < 0);
+    }
+
+    @Test
+    void flows_drawdownPhase_afterGap_stillPositive() {
+        var flows = SIPP_WITH_GAP.flows(JAN_2034, JAN_2034);
+        assertEquals(1, flows.size());
+        assertEquals(0, new BigDecimal("800").compareTo(flows.get(JAN_2034)));
+    }
+
+    @Test
+    void flows_drawdownTakesPriority_whenContributionEndOverlapsDrawdownStart() {
+        // contributionEnd set AFTER drawdownStart — drawdown must still win from drawdownStart onward
+        var overlapping = new Investment("SIPP", "", JAN_2024, new BigDecimal("200000"),
+                new BigDecimal("0.05"), Optional.of(new BigDecimal("500")), BigDecimal.ZERO,
+                Optional.of(YearMonth.of(2035, 1)), Optional.of(JAN_2034), Optional.of(new BigDecimal("800")));
+        var flows = overlapping.flows(JAN_2034, JAN_2034);
+        assertEquals(0, new BigDecimal("800").compareTo(flows.get(JAN_2034)),
+                "Drawdown should win even though contributionEnd is later");
     }
 }
