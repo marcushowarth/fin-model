@@ -6,6 +6,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -135,6 +136,48 @@ class PriceIndexDatasetLoaderTest {
 
         assertNotEquals(0, rpiRatio.compareTo(cpiRatio),
                 () -> "Expected RPI and CPI 2015->2024 ratios to differ, both were " + rpiRatio);
+    }
+
+    @Test
+    void bundled_rpiMillennium_loadsSuccessfully() {
+        PriceIndexDataset ds = PriceIndexDatasetLoader.bundled(IndexSeries.RPI_MILLENNIUM);
+        assertFalse(ds.entries().isEmpty());
+        assertEquals(IndexSeries.RPI_MILLENNIUM, ds.series());
+    }
+
+    @Test
+    void bundled_rpiMillennium_spansFrom1209To2016() {
+        PriceIndexDataset ds = PriceIndexDatasetLoader.bundled(IndexSeries.RPI_MILLENNIUM);
+        assertDoesNotThrow(() -> ds.indexForYear(1209));
+        assertDoesNotThrow(() -> ds.indexForYear(2016));
+        assertThrows(IllegalArgumentException.class, () -> ds.indexForYear(2017));
+    }
+
+    @Test
+    void bundled_rpiMillennium_hasKnownBaseYear() {
+        PriceIndexDataset ds = PriceIndexDatasetLoader.bundled(IndexSeries.RPI_MILLENNIUM);
+        BigDecimal base2015 = ds.indexForYear(2015);
+        assertEquals(0, new BigDecimal("100.0").compareTo(base2015));
+    }
+
+    @Test
+    void bundled_cpiMillennium_loadsSuccessfully() {
+        PriceIndexDataset ds = PriceIndexDatasetLoader.bundled(IndexSeries.CPI_MILLENNIUM);
+        assertFalse(ds.entries().isEmpty());
+        assertEquals(IndexSeries.CPI_MILLENNIUM, ds.series());
+    }
+
+    @Test
+    void bundled_cpiMillennium_agreesWithLiveCpiOnOverlapYears() {
+        // Cross-validated during research (kanban #1003) — Millennium column D and our
+        // bundled ONS D7BT should agree within a small tolerance for shared years.
+        PriceIndexDataset millennium = PriceIndexDatasetLoader.bundled(IndexSeries.CPI_MILLENNIUM);
+        PriceIndexDataset live = PriceIndexDatasetLoader.bundled(IndexSeries.CPI);
+        for (int year : List.of(1988, 1990, 2000, 2010, 2014, 2015, 2016)) {
+            BigDecimal diff = millennium.indexForYear(year).subtract(live.indexForYear(year)).abs();
+            assertTrue(diff.compareTo(new BigDecimal("0.1")) < 0,
+                    () -> "Year " + year + ": Millennium=" + millennium.indexForYear(year) + " live=" + live.indexForYear(year));
+        }
     }
 
     private static PriceIndexDataset load(String csv) {
