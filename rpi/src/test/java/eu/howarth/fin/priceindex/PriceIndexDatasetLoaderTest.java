@@ -99,15 +99,6 @@ class PriceIndexDatasetLoaderTest {
     }
 
     @Test
-    void bundled_rpi_matchesExistingRpiDataset() {
-        // Same underlying ons-chaw.csv file as eu.howarth.fin.rpi.RpiDatasetLoader —
-        // both must keep agreeing after the weekly refresh workflow runs.
-        PriceIndexDataset generalised = PriceIndexDatasetLoader.bundled(IndexSeries.RPI);
-        eu.howarth.fin.rpi.RpiDataset legacy = eu.howarth.fin.rpi.RpiDatasetLoader.bundled();
-        assertEquals(0, legacy.indexForMonth(2024, 1).compareTo(generalised.indexForMonth(2024, 1)));
-    }
-
-    @Test
     void bundled_cpi_loadsSuccessfully() {
         PriceIndexDataset ds = PriceIndexDatasetLoader.bundled(IndexSeries.CPI);
         assertFalse(ds.entries().isEmpty());

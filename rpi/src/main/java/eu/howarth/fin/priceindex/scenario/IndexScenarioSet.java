@@ -1,6 +1,6 @@
-package eu.howarth.fin.rpi.scenario;
+package eu.howarth.fin.priceindex.scenario;
 
-import eu.howarth.fin.rpi.RpiAdjuster;
+import eu.howarth.fin.priceindex.PriceIndexAdjuster;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
@@ -8,16 +8,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public record RpiScenarioSet(List<RpiScenario> scenarios) {
+public record IndexScenarioSet(List<IndexScenario> scenarios) {
 
-    public RpiScenarioSet {
+    public IndexScenarioSet {
         scenarios = List.copyOf(scenarios);
     }
 
     public Map<String, BigDecimal> adjust(BigDecimal value, YearMonth from, YearMonth to) {
         return scenarios.stream().collect(Collectors.toMap(
-                RpiScenario::name,
-                s -> RpiAdjuster.adjust(value, from, to, s.dataset())
+                IndexScenario::name,
+                s -> PriceIndexAdjuster.adjust(value, from, to, s.dataset())
         ));
     }
 }

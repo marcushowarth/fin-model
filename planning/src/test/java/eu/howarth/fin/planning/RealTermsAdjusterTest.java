@@ -1,9 +1,10 @@
 package eu.howarth.fin.planning;
 
-import eu.howarth.fin.rpi.RpiDataset;
-import eu.howarth.fin.rpi.RpiEntry;
-import eu.howarth.fin.rpi.scenario.RpiScenario;
-import eu.howarth.fin.rpi.scenario.RpiScenarioSet;
+import eu.howarth.fin.priceindex.IndexSeries;
+import eu.howarth.fin.priceindex.PriceIndexDataset;
+import eu.howarth.fin.priceindex.PriceIndexEntry;
+import eu.howarth.fin.priceindex.scenario.IndexScenario;
+import eu.howarth.fin.priceindex.scenario.IndexScenarioSet;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -23,22 +24,22 @@ class RealTermsAdjusterTest {
     private static final YearMonth MONTH_3 = YearMonth.of(2026, 3);
 
     // low: 2% per month — 2026-03 index 104, so deflating 1040 → 1040*(100/104) = 1000 exactly
-    private static final RpiDataset LOW_DATASET = new RpiDataset(List.of(
-            new RpiEntry(2026, 1, bd("100")),
-            new RpiEntry(2026, 2, bd("102")),
-            new RpiEntry(2026, 3, bd("104"))
+    private static final PriceIndexDataset LOW_DATASET = new PriceIndexDataset(IndexSeries.RPI, List.of(
+            new PriceIndexEntry(2026, 1, bd("100")),
+            new PriceIndexEntry(2026, 2, bd("102")),
+            new PriceIndexEntry(2026, 3, bd("104"))
     ));
 
     // high: 5% per month — 2026-03 index 110
-    private static final RpiDataset HIGH_DATASET = new RpiDataset(List.of(
-            new RpiEntry(2026, 1, bd("100")),
-            new RpiEntry(2026, 2, bd("105")),
-            new RpiEntry(2026, 3, bd("110"))
+    private static final PriceIndexDataset HIGH_DATASET = new PriceIndexDataset(IndexSeries.RPI, List.of(
+            new PriceIndexEntry(2026, 1, bd("100")),
+            new PriceIndexEntry(2026, 2, bd("105")),
+            new PriceIndexEntry(2026, 3, bd("110"))
     ));
 
-    private static final RpiScenarioSet SCENARIOS = new RpiScenarioSet(List.of(
-            new RpiScenario("low", LOW_DATASET),
-            new RpiScenario("high", HIGH_DATASET)
+    private static final IndexScenarioSet SCENARIOS = new IndexScenarioSet(List.of(
+            new IndexScenario("low", LOW_DATASET),
+            new IndexScenario("high", HIGH_DATASET)
     ));
 
     // Nominal net worth: 1000, 1020, 1040 over three months

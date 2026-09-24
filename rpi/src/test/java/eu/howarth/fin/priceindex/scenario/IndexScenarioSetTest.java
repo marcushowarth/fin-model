@@ -1,7 +1,8 @@
-package eu.howarth.fin.rpi.scenario;
+package eu.howarth.fin.priceindex.scenario;
 
-import eu.howarth.fin.rpi.RpiDataset;
-import eu.howarth.fin.rpi.RpiEntry;
+import eu.howarth.fin.priceindex.IndexSeries;
+import eu.howarth.fin.priceindex.PriceIndexDataset;
+import eu.howarth.fin.priceindex.PriceIndexEntry;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -11,21 +12,21 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class RpiScenarioSetTest {
+class IndexScenarioSetTest {
 
-    private static final RpiDataset LOW_DATASET = new RpiDataset(List.of(
-            new RpiEntry(2024, 1, bd("100")),
-            new RpiEntry(2025, 1, bd("103"))
+    private static final PriceIndexDataset LOW_DATASET = new PriceIndexDataset(IndexSeries.RPI, List.of(
+            new PriceIndexEntry(2024, 1, bd("100")),
+            new PriceIndexEntry(2025, 1, bd("103"))
     ));
 
-    private static final RpiDataset HIGH_DATASET = new RpiDataset(List.of(
-            new RpiEntry(2024, 1, bd("100")),
-            new RpiEntry(2025, 1, bd("106"))
+    private static final PriceIndexDataset HIGH_DATASET = new PriceIndexDataset(IndexSeries.RPI, List.of(
+            new PriceIndexEntry(2024, 1, bd("100")),
+            new PriceIndexEntry(2025, 1, bd("106"))
     ));
 
-    private static final RpiScenarioSet SCENARIOS = new RpiScenarioSet(List.of(
-            new RpiScenario("low",  LOW_DATASET),
-            new RpiScenario("high", HIGH_DATASET)
+    private static final IndexScenarioSet SCENARIOS = new IndexScenarioSet(List.of(
+            new IndexScenario("low",  LOW_DATASET),
+            new IndexScenario("high", HIGH_DATASET)
     ));
 
     @Test
@@ -64,8 +65,8 @@ class RpiScenarioSetTest {
 
     @Test
     void immutability_originalListMutationHasNoEffect() {
-        var mutable = new java.util.ArrayList<>(List.of(new RpiScenario("base", LOW_DATASET)));
-        var set = new RpiScenarioSet(mutable);
+        var mutable = new java.util.ArrayList<>(List.of(new IndexScenario("base", LOW_DATASET)));
+        var set = new IndexScenarioSet(mutable);
         mutable.clear();
         assertEquals(1, set.scenarios().size());
     }

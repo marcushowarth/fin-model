@@ -1,6 +1,6 @@
 package eu.howarth.fin.planning;
 
-import eu.howarth.fin.rpi.scenario.RpiScenarioSet;
+import eu.howarth.fin.priceindex.scenario.IndexScenarioSet;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 
 public class RealTermsAdjuster {
 
-    public static RealTermsProjection adjust(ModelProjection nominal, RpiScenarioSet scenarios, YearMonth base) {
+    public static RealTermsProjection adjust(ModelProjection nominal, IndexScenarioSet scenarios, YearMonth base) {
         var netWorth = deflateTimeSeries(nominal.netWorth(), scenarios, base);
         var cashPosition = deflateTimeSeries(nominal.cashPosition(), scenarios, base);
 
@@ -37,7 +37,7 @@ public class RealTermsAdjuster {
 
     private static Map<String, NavigableMap<YearMonth, BigDecimal>> deflateTimeSeries(
             NavigableMap<YearMonth, BigDecimal> series,
-            RpiScenarioSet scenarios,
+            IndexScenarioSet scenarios,
             YearMonth base) {
 
         Map<String, NavigableMap<YearMonth, BigDecimal>> result = new LinkedHashMap<>();
