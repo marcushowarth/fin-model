@@ -83,7 +83,12 @@ jobs:
           LATEST_MONTH=$(grep -E '^"[0-9]{4} [A-Z]{3}"' "$CSV_PATH" | tail -1 | cut -d'"' -f2)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase   # other matrix job may have just committed the sibling series
           git add "$CSV_PATH"
           git commit -m "data: refresh ONS ${SERIES_NAME} to ${LATEST_MONTH}"
+          # Commit locally before pulling: the sibling matrix job may have pushed its own
+          # series in the meantime, and rebase needs a clean working tree to replay onto
+          # it. Committing first makes this correct regardless of which series (one,
+          # the other, or both) has new data this week — no assumption about ONS's
+          # release schedule needed.
+          git pull --rebase
           git push
