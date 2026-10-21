@@ -92,3 +92,24 @@ jobs:
           # release schedule needed.
           git pull --rebase
           git push
+
+  # The data commits above are pushed with GITHUB_TOKEN, which never triggers
+  # ci.yml's push event — so new data used to sit unpublished until the next
+  # human commit. workflow_dispatch is the exception GITHUB_TOKEN can trigger.
+  publish:
+    needs: update-data
+    if: ${{ !cancelled() }}   # one series failing shouldn't hold back the other's new data
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Run CI (publish + redeploy apps) if this run pushed new data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          HEAD=$(gh api repos/${{ github.repository }}/commits/main -q .sha)
+          if [ "$HEAD" = "${{ github.sha }}" ]; then
+            echo "No new data commit — nothing to publish."
+          else
+            gh workflow run ci.yml -R ${{ github.repository }} --ref main
+          fi

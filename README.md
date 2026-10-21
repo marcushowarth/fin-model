@@ -34,7 +34,9 @@ new row was added (so an ONS revision to an existing figure doesn't trigger a
 no-op commit), runs the module's tests against the refreshed data as a
 correctness check, and commits + pushes only if both pass. A failed/no-op run
 means the data was already current, or ONS's response looked wrong — either
-way, the last known-good data stays in place.
+way, the last known-good data stays in place. A run that commits new data then
+starts CI, which publishes the SNAPSHOT and redeploys `fin-optics-api` and
+`real-retro-api` (the apps have no schedule of their own).
 
 ### `planning`
 

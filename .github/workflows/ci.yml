@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch: {}   # update-ons-data.yml runs this after a data commit (its
+                          # GITHUB_TOKEN push can't trigger the push event above)
 
 jobs:
   build:
@@ -43,7 +45,20 @@ jobs:
           PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
 
       - name: Publish to GitHub Packages
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: mvn deploy -DskipTests
         env:
           PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+
+      # Event-driven replacement for the apps' old weekly redeploy schedules
+      # (kanban #1009): every new SNAPSHOT redeploys the apps that bundle it.
+      # Cross-repo, so it needs a PAT: fine-grained, Actions read/write on
+      # these two repos only.
+      - name: Redeploy downstream apps
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+        run: |
+          for repo in fin-optics-api real-retro-api; do
+            gh workflow run deploy.yml -R marcushowarth/$repo --ref main
+          done
