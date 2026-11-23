@@ -3,8 +3,8 @@
 "Source dataset ID","MM23"
 "PreUnit",""
 "Unit","Index, base year = 100"
-"Release date","21-10-2026"
-"Next release","18 November 2026"
+"Release date","18-11-2026"
+"Next release","16 December 2026"
 "Important notes",
 "1988","49.6"
 "1989","52.2"
@@ -664,3 +664,4 @@
 "2026 JUL","142.9"
 "2026 AUG","143.6"
 "2026 SEP","144.1"
+"2026 OCT","144.9"
